@@ -17,5 +17,80 @@ services:
       timeout: 5s
       retries: 10
 
+  inventory-service:
+    build:
+      context: .
+      dockerfile: inventory-service/Dockerfile
+    container_name: inventory-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/inventory_db
+      DB_USER: inv_user
+      DB_PASSWORD: inv_pass
+      JWT_SECRET: local-dev-shared-secret-at-least-32-bytes-long
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  reservation-service:
+    build:
+      context: .
+      dockerfile: reservation-service/Dockerfile
+    container_name: reservation-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/reservation_db
+      DB_USER: res_user
+      DB_PASSWORD: res_pass
+      JWT_SECRET: local-dev-shared-secret-at-least-32-bytes-long
+      INVENTORY_BASE_URL: http://inventory-service:8081
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    container_name: order-service
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/order_db
+      DB_USER: ord_user
+      DB_PASSWORD: ord_pass
+      JWT_SECRET: local-dev-shared-secret-at-least-32-bytes-long
+      INVENTORY_BASE_URL: http://inventory-service:8081
+      RESERVATION_BASE_URL: http://reservation-service:8082
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      reservation-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
 volumes:
   pgdata:
