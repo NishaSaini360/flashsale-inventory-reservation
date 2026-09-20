@@ -31,7 +31,7 @@ public class Reservation extends TenantAwareEntity {
     private ReleaseState releaseState = ReleaseState.NOT_NEEDED;
 
     @Column(name = "created_at", insertable = false, updatable = false) private Instant createdAt;
-    @Column(name = "updated_at") private Instant updatedAt;
+    @Column(name = "updated_at", insertable = false) private Instant updatedAt;
 
     protected Reservation() {}
 
