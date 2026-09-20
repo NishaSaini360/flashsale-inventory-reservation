@@ -1,0 +1,40 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/order_db}
+    username: ${DB_USER:ord_user}
+    password: ${DB_PASSWORD:ord_pass}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-local-dev-secret-at-least-32-bytes-long}
+
+logging:
+  level:
+    org.flywaydb: INFO
