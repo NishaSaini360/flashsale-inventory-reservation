@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/reservation_db
+    username: res_user
+    password: res_pass
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+app:
+  jwt:
+    secret: test-secret-that-is-at-least-32-bytes-long!
+  reservation:
+    ttl: PT2S
+    allocation-grace: PT1S
+  inventory:
+    base-url: http://localhost:8081
+    connect-timeout-ms: 1000
+    read-timeout-ms: 2000
+  expiry:
+    interval-ms: 500
+    batch-size: 100

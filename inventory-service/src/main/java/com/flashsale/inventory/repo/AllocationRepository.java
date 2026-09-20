@@ -13,7 +13,7 @@ import java.util.UUID;
 
 public interface AllocationRepository extends JpaRepository<Allocation, UUID> {
 
-    Optional<Allocation> findByAllocationRef(String allocationRef);
+    Optional<Allocation> findByTenantIdAndAllocationRef(String tenantId, String allocationRef);
 
     /**
      * Guarded status transition. Returns 1 only if this caller won the race.

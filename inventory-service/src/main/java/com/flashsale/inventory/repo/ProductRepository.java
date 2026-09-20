@@ -6,5 +6,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
-    Optional<Product> findBySku(String sku);   // tenant scoping comes from the Hibernate filter
+    /** Tenant is explicit in the query, never implied by thread context. */
+    Optional<Product> findByTenantIdAndSku(String tenantId, String sku);
 }

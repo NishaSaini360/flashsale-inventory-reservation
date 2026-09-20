@@ -42,16 +42,16 @@ public class AllocationService {
     public Allocation allocate(String allocationRef, String sku, int qty, Instant expiresAt) {
         String tenantId = TenantContext.require();
 
-        var existing = allocations.findByAllocationRef(allocationRef);
+        var existing = allocations.findByTenantIdAndAllocationRef(tenantId, allocationRef);
         if (existing.isPresent()) {
             log.info("Idempotent replay of allocation ref={}", allocationRef);
             return existing.get();
         }
 
-        Product product = products.findBySku(sku)
+        Product product = products.findByTenantIdAndSku(tenantId, sku)
                 .orElseThrow(() -> Problems.notFound("Product", sku));
 
-        List<StockItem> items = stock.findByProductIdOrderByWarehouseIdAsc(product.getId());
+        List<StockItem> items = stock.findByTenantIdAndProductIdOrderByWarehouseIdAsc(tenantId, product.getId());
 
         Allocation allocation = allocations.save(new Allocation(allocationRef, sku, qty, expiresAt));
 
@@ -84,7 +84,7 @@ public class AllocationService {
     @Transactional
     public Allocation release(String allocationRef) {
         String tenantId = TenantContext.require();
-        Allocation allocation = allocations.findByAllocationRef(allocationRef)
+        Allocation allocation = allocations.findByTenantIdAndAllocationRef(tenantId, allocationRef)
                 .orElseThrow(() -> Problems.notFound("Allocation", allocationRef));
 
         if (allocations.markReleased(allocation.getId(), tenantId, clock.instant()) == 0) {
@@ -101,14 +101,14 @@ public class AllocationService {
         events.publish(EventPublisher.STOCK_RELEASED, "Allocation", allocationRef,
                 Map.of("sku", allocation.getSku(), "qty", allocation.getQty(), "allocationRef", allocationRef));
 
-        return allocations.findByAllocationRef(allocationRef).orElseThrow();
+        return allocations.findByTenantIdAndAllocationRef(tenantId, allocationRef).orElseThrow();
     }
 
     /** Commit: on_hand and reserved both drop by qty, so `available` is unchanged. */
     @Transactional
     public Allocation commit(String allocationRef) {
         String tenantId = TenantContext.require();
-        Allocation allocation = allocations.findByAllocationRef(allocationRef)
+        Allocation allocation = allocations.findByTenantIdAndAllocationRef(tenantId, allocationRef)
                 .orElseThrow(() -> Problems.notFound("Allocation", allocationRef));
 
         if (allocations.markCommitted(allocation.getId(), tenantId, clock.instant()) == 0) {
@@ -126,6 +126,6 @@ public class AllocationService {
         events.publish(EventPublisher.STOCK_COMMITTED, "Allocation", allocationRef,
                 Map.of("sku", allocation.getSku(), "qty", allocation.getQty(), "allocationRef", allocationRef));
 
-        return allocations.findByAllocationRef(allocationRef).orElseThrow();
+        return allocations.findByTenantIdAndAllocationRef(tenantId, allocationRef).orElseThrow();
     }
 }

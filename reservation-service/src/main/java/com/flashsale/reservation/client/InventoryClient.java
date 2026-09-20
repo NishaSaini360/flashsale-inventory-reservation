@@ -58,7 +58,7 @@ public class InventoryClient {
             return client.post()
                     .uri("/internal/v1/allocations")
                     .header("Authorization", "Bearer " + serviceToken())
-                    .header(CorrelationIdFilter.HEADER, MDC.get("correlationId"))
+                    .header(CorrelationIdFilter.HEADER, correlationId())
                     .body(Map.of("allocationRef", allocationRef, "sku", sku,
                                  "qty", qty, "expiresAt", expiresAt))
                     .retrieve()
@@ -85,9 +85,15 @@ public class InventoryClient {
         client.post()
               .uri("/internal/v1/allocations/{ref}/release", allocationRef)
               .header("Authorization", "Bearer " + serviceToken())
-              .header(CorrelationIdFilter.HEADER, MDC.get("correlationId"))
+              .header(CorrelationIdFilter.HEADER, correlationId())
               .retrieve()
               .toBodilessEntity();
+    }
+
+    /** MDC is empty on scheduler/worker threads; a null header value throws. */
+    private String correlationId() {
+        String cid = MDC.get("correlationId");
+        return cid != null ? cid : java.util.UUID.randomUUID().toString();
     }
 
     private String serviceToken() {

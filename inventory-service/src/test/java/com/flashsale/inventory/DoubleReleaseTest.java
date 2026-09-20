@@ -65,8 +65,8 @@ class DoubleReleaseTest extends AbstractIntegrationTest {
 
         tx.executeWithoutResult(s -> {
             TenantContext.set(TENANT);
-            var product = productRepo.findBySku(sku).orElseThrow();
-            var item = stockRepo.findByProductIdOrderByWarehouseIdAsc(product.getId()).getFirst();
+            var product = productRepo.findByTenantIdAndSku(TENANT, sku).orElseThrow();
+            var item = stockRepo.findByTenantIdAndProductIdOrderByWarehouseIdAsc(TENANT, product.getId()).getFirst();
 
             assertThat(item.getReserved()).isZero();          // released exactly once, not 8 times
             assertThat(item.getOnHand()).isEqualTo(10);

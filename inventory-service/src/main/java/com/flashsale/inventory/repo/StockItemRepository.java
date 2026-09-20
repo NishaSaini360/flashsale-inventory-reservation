@@ -11,7 +11,7 @@ import java.util.UUID;
 
 public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
 
-    List<StockItem> findByProductIdOrderByWarehouseIdAsc(UUID productId);
+    List<StockItem> findByTenantIdAndProductIdOrderByWarehouseIdAsc(String tenantId, UUID productId);
 
     /**
      * THE core query. A single atomic UPDATE whose predicate re-checks availability.
