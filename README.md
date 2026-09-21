@@ -86,9 +86,10 @@ would then pin stock indefinitely.
 ## Multi-tenancy
 
 JWT HS256 (production would use RS256 + JWKS), claims `tenantId` and `roles`.
-Tenant is an explicit parameter in **every** repository method and the leading
-column of every unique constraint — not a Hibernate @Filter. See "bugs found"
-below for why.
+Tenant is an explicit parameter in request-facing repository methods and the
+leading column of every unique constraint — not a Hibernate @Filter. Background
+workers claim cross-tenant batches, then set tenant context before calling
+tenant-scoped downstream APIs. See "bugs found" below for why.
 
 Internal endpoints require ROLE_SERVICE. Services mint a short-lived service
 token carrying the caller's tenant; the user's own token is never forwarded.
@@ -117,10 +118,13 @@ Run: `docker compose up -d postgres && ./mvnw test`
 |---|---|
 | OversellConcurrencyTest | 300 concurrent allocates against 100 units, x5 repetitions: exactly 100 succeed, 200 get 409, reserved == 100, available == 0. Repeated because races are probabilistic |
 | DoubleReleaseTest | 8 concurrent releases decrement reserved exactly once. Double-release is the sneakiest oversell path and almost nobody tests it |
-| TenantIsolationTest | Two tenants owning the **same SKU string**. Draining A must not touch B. This separates real query filtering from controller theatre — and it caught a live bug |
-| SecurityTest | 401 unauthenticated; USER and ADMIN both 403 on /internal/**; USER 403 on admin; actuator open; errors in RFC 7807 shape |
+| inventory TenantIsolationTest | Two tenants owning the **same SKU string**. Draining A must not touch B. This separates real query filtering from controller theatre — and it caught a live bug |
+| inventory SecurityTest | 401 unauthenticated; USER and ADMIN both 403 on /internal/**; USER 403 on admin; actuator open; errors in RFC 7807 shape |
+| reservation TenantIsolationTest | Tenant B cannot read tenant A's reservation; reservation event reads return only the caller's tenant |
+| ExpiryWorkerTest | The scheduler delegates state changes to `ExpiryTxOps`, so transactional methods are invoked through the Spring proxy |
+| order TenantIsolationTest | Tenant B cannot read tenant A's order; order event reads return only the caller's tenant |
 
-## Three bugs these tests found
+## Bugs these tests found
 
 1. **Tenant isolation was not actually enforced.** The Hibernate @Filter was
    enabled by an MVC interceptor, which silently no-ops with open-in-view: false
@@ -134,13 +138,17 @@ Run: `docker compose up -d postgres && ./mvnw test`
 3. **The expiry worker's @Transactional never applied.** run() called
    this.claimBatch(), bypassing the Spring proxy. The worker had never once done
    its job. Moved to a separate bean.
+4. **Reservation/order read paths were not tenant-scoped.** Some reads used
+   `findById`, and reservation/order event APIs listed global events. Replaced
+   with tenant-scoped repository methods and added regression tests.
 
 ## What I deliberately left out
 
-- **Automated idempotency and expiry tests.** Both cross a service boundary, so
-  testing them properly needs WireMock or a Compose-based harness. Within the
-  timebox I prioritised the concurrency tests, since oversell is the primary
-  correctness risk. Both paths are verified manually — see docs/evidence/.
+- **Automated idempotency and full end-to-end expiry tests.** These cross a
+  service boundary, so testing them properly needs WireMock or a Compose-based
+  harness. I added unit/integration coverage for expiry-worker transaction
+  delegation and tenant scoping, and kept the full cross-service paths manually
+  verified — see docs/evidence/.
 - **Testcontainers.** The bundled docker-java client is incompatible with Docker
   Engine 29.x on this machine; tests run against the Compose Postgres instead.
 - **Outbox relay / broker.** The events table is already shaped for it.
