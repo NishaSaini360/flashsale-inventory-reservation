@@ -92,7 +92,9 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public Reservation get(UUID id) {
-        return reservations.findById(id).orElseThrow(() -> Problems.notFound("Reservation", id));
+        String tenantId = TenantContext.require();
+        return reservations.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> Problems.crossTenant("Reservation", id));
     }
 
     /** Atomic gate: ACTIVE and unexpired, or nothing. Closes the worker-lag window. */
@@ -100,11 +102,12 @@ public class ReservationService {
     public Reservation confirm(UUID id) {
         String tenantId = TenantContext.require();
         if (reservations.tryConfirm(id, tenantId, clock.instant()) == 0) {
-            var r = reservations.findById(id).orElseThrow(() -> Problems.notFound("Reservation", id));
+            var r = reservations.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> Problems.crossTenant("Reservation", id));
             if (r.getStatus() == ReservationStatus.CONFIRMED) return r;
             throw Problems.reservationExpired(id);
         }
-        var r = reservations.findById(id).orElseThrow();
+        var r = reservations.findByIdAndTenantId(id, tenantId).orElseThrow();
         events.publish(EventPublisher.RESERVATION_CONFIRMED, id.toString(),
                 Map.of("sku", r.getSku(), "qty", r.getQty()));
         return r;
@@ -114,9 +117,10 @@ public class ReservationService {
     public Reservation cancel(UUID id) {
         String tenantId = TenantContext.require();
         if (reservations.tryCancel(id, tenantId, clock.instant()) == 0) {
-            return reservations.findById(id).orElseThrow(() -> Problems.notFound("Reservation", id));
+            return reservations.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> Problems.crossTenant("Reservation", id));
         }
-        var r = reservations.findById(id).orElseThrow();
+        var r = reservations.findByIdAndTenantId(id, tenantId).orElseThrow();
         events.publish(EventPublisher.RESERVATION_CANCELLED, id.toString(),
                 Map.of("sku", r.getSku(), "qty", r.getQty()));
         return r;

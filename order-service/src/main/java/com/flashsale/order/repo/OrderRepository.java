@@ -8,9 +8,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
+
+    Optional<Order> findByIdAndTenantId(UUID id, String tenantId);
 
     /** Guarded transition — only the caller that wins may act on it. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)

@@ -1,5 +1,7 @@
 package com.flashsale.order.service;
 
+import com.flashsale.commons.error.Problems;
+import com.flashsale.commons.tenant.TenantContext;
 import com.flashsale.order.domain.*;
 import com.flashsale.order.event.EventPublisher;
 import com.flashsale.order.repo.OrderRepository;
@@ -62,7 +64,11 @@ public class OrderTxOps {
     }
 
     @Transactional(readOnly = true)
-    public Order load(UUID orderId) { return orders.findById(orderId).orElseThrow(); }
+    public Order load(UUID orderId) {
+        String tenantId = TenantContext.require();
+        return orders.findByIdAndTenantId(orderId, tenantId)
+                .orElseThrow(() -> Problems.crossTenant("Order", orderId));
+    }
 
     @Transactional(readOnly = true)
     public PaymentAttempt loadPayment(String externalRef) {

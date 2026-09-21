@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/order_db
+    username: ord_user
+    password: ord_pass
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+app:
+  jwt:
+    secret: test-secret-that-is-at-least-32-bytes-long!
+  inventory:
+    base-url: http://localhost:8081
+  reservation:
+    base-url: http://localhost:8082
+  http:
+    connect-timeout-ms: 1000
+    read-timeout-ms: 2000
+  payment:
+    mode: ALWAYS_SUCCESS
+    min-delay-ms: 0
+    max-delay-ms: 1
+    success-rate: 1.0
+    callback-url: http://localhost:8083

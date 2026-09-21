@@ -13,6 +13,8 @@ import java.util.UUID;
 
 public interface ReservationRepository extends JpaRepository<Reservation, UUID> {
 
+    Optional<Reservation> findByIdAndTenantId(UUID id, String tenantId);
+
     Optional<Reservation> findByAllocationRef(String allocationRef);
 
     /**
