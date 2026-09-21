@@ -1,0 +1,5 @@
+ invariant_violations 
+----------------------
+                    0
+(1 row)
+
