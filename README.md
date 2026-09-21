@@ -181,18 +181,18 @@ sequenceDiagram
   participant P as FakePaymentAdapter
 
   U->>R: POST /api/v1/reservations + Idempotency-Key
-  R->>R: claim idempotency key; INSERT reservation PENDING [commit]
+  R->>R: claim idempotency key and insert PENDING reservation
   R->>I: POST /internal/v1/allocations {ref, sku, qty, expiresAt}
   I->>I: UPDATE stock_items SET reserved=reserved+qty WHERE on_hand-reserved>=qty
-  I->>I: INSERT allocation(ref UNIQUE) + StockReserved [commit]
+  I->>I: insert allocation with unique ref and StockReserved
   I-->>R: 201
-  R->>R: reservation ACTIVE, expires_at=now+TTL [commit]
+  R->>R: mark reservation ACTIVE with TTL
   R-->>U: 201 {reservationId, expiresAt}
 
   U->>O: POST /api/v1/orders {reservationId}
   O->>R: GET /internal/v1/reservations/{id}
   R-->>O: 200 (ACTIVE, unexpired)
-  O->>O: INSERT order PENDING_PAYMENT + payment_attempt [commit]
+  O->>O: insert PENDING_PAYMENT order and payment attempt
   O->>P: authorize()
   O-->>U: 202 {orderId, PENDING_PAYMENT}
   P-->>O: callback SUCCEEDED (0-5s, scheduler thread)
